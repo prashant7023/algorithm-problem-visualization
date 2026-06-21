@@ -1,0 +1,8 @@
+{
+  "code": "def hasCycle(head):\n    slow, fast = head, head\n    while fast and fast.next:\n        slow = slow.next\n        fast = fast.next.next\n        if slow == fast:\n            return True\n    return False\n",
+  "entry": "hasCycle",
+  "args": [
+    { "type": "linkedlist", "values": [3, 2, 0, -4], "pos": 1 }
+  ],
+  "max_steps": 10000
+}
