@@ -20,6 +20,55 @@ export function walkLinkedList(heap: Heap, startId: string, max = 300): ListWalk
   return { order, cycleTo: cur && seen.has(cur) ? cur : null };
 }
 
+/** True if this heap object looks like a singly-linked list node. */
+export function isListNode(heap: Heap, id: string): boolean {
+  const o = heap[id];
+  return !!o && o.type === "node" && "next" in o.fields;
+}
+
+/**
+ * Starts of every distinct linked-list chain currently in the heap.
+ *
+ * Prefer structural heads (nodes never referenced via another node's `next`)
+ * so mid-list pointers like `l1 = l1->next` still show the full original list.
+ * Fall back to scope refs when the structure is a pure cycle (no head).
+ */
+export function linkedListChainStarts(
+  heap: Heap,
+  scopeRefIds: string[],
+): string[] {
+  const listIds = Object.keys(heap).filter((id) => isListNode(heap, id));
+  if (!listIds.length) return [];
+
+  const pointedTo = new Set<string>();
+  for (const id of listIds) {
+    const n = fieldRefId(heap[id], "next");
+    if (n && isListNode(heap, n)) pointedTo.add(n);
+  }
+
+  const roots = listIds.filter((id) => !pointedTo.has(id));
+  const live = new Set(scopeRefIds.filter((id) => isListNode(heap, id)));
+
+  // Keep only chains that a live pointer still sits on (skip orphan nodes).
+  const fromRoots = roots.filter((root) => {
+    const { order } = walkLinkedList(heap, root);
+    return order.some((id) => live.has(id));
+  });
+  if (fromRoots.length) return fromRoots;
+
+  // Pure cycle(s): pick one start per overlapping walk from live pointers.
+  const starts: string[] = [];
+  const covered = new Set<string>();
+  for (const id of scopeRefIds) {
+    if (!isListNode(heap, id) || covered.has(id)) continue;
+    const { order } = walkLinkedList(heap, id);
+    if (!order.length) continue;
+    starts.push(id);
+    for (const n of order) covered.add(n);
+  }
+  return starts;
+}
+
 export interface TreeLayoutNode {
   id: string;
   depth: number;

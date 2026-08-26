@@ -1,0 +1,15 @@
+.git
+.github
+frontend
+docs
+**/.DS_Store
+**/node_modules
+**/__pycache__
+**/*.pyc
+**/.venv
+**/tmp
+**/*.exe
+**/prog
+**/prog.exe
+README.md
+.dockerignore

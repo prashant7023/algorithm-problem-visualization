@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { heapUpTo } from "../../lib/heap";
-import { walkLinkedList } from "../../lib/structures";
+import { linkedListChainStarts, walkLinkedList } from "../../lib/structures";
 import type { Frame, Value } from "../../lib/types";
 import { ArrayView } from "./renderers/ArrayView";
 import { DPTableView } from "./renderers/DPTableView";
@@ -33,37 +33,57 @@ export function Stage({ frames, cursor }: { frames: Frame[]; cursor: number }) {
   const pointerByNode: Record<string, string[]> = {};
   for (const [name, v] of refEntries) (pointerByNode[v.id] ||= []).push(name);
 
+  const changed = new Set(frame.changed);
   const byDs = (ds: string) => refEntries.filter(([, v]) => v.ds === ds);
-  const cards: { key: string; color: string; title: string; body: React.ReactNode }[] = [];
+  const cards: { key: string; color: string; title: string; body: React.ReactNode; focus?: boolean }[] = [];
 
-  // --- Linked lists: render once from the best head, overlay all pointers ---
+  // --- Linked lists: one card per distinct chain (not "longest only") ---
+  // Bug we fix: when l1 advances mid-list, walking from l1 is shorter than l2,
+  // so the old reducer flipped the stage to l2 while code was still on l1.
   const llRefs = byDs("linkedlist");
   if (llRefs.length) {
-    const start =
-      llRefs.find(([n]) => n === "head")?.[1].id ??
-      llRefs
-        .map(([, v]) => v.id)
-        .reduce((best, id) =>
-          walkLinkedList(heap, id).order.length > walkLinkedList(heap, best).order.length ? id : best,
-        );
-    cards.push({
-      key: "ll",
-      color: dsColor("linkedlist"),
-      title: "Linked list",
-      body: <LinkedListView heap={heap} startId={start} pointers={pointerByNode} />,
+    const starts = linkedListChainStarts(
+      heap,
+      llRefs.map(([, v]) => v.id),
+    );
+    const chains = starts.map((start) => {
+      const { order } = walkLinkedList(heap, start);
+      const nodes = new Set(order);
+      const ptrs = llRefs.filter(([, v]) => nodes.has(v.id)).map(([n]) => n);
+      const focus = ptrs.some((n) => changed.has(n));
+      return { start, order, ptrs, focus };
     });
+    // Changed pointers first so the active list stays on top while stepping.
+    chains.sort((a, b) => Number(b.focus) - Number(a.focus));
+
+    for (const c of chains) {
+      if (!c.order.length) continue;
+      const label = c.ptrs.length ? c.ptrs.join(", ") : c.start;
+      cards.push({
+        key: `ll-${c.start}`,
+        color: dsColor("linkedlist"),
+        title: `Linked list · ${label}`,
+        focus: c.focus,
+        body: <LinkedListView heap={heap} startId={c.start} pointers={pointerByNode} />,
+      });
+    }
   }
 
   // --- Trees ---
   const treeRefs = byDs("tree");
   if (treeRefs.length) {
-    const root = treeRefs.find(([n]) => n === "root")?.[1].id ?? treeRefs[0][1].id;
-    cards.push({
-      key: "tree",
-      color: dsColor("tree"),
-      title: "Tree",
-      body: <TreeView heap={heap} rootId={root} pointers={pointerByNode} />,
-    });
+    const seenRoots = new Set<string>();
+    for (const [name, v] of treeRefs) {
+      if (seenRoots.has(v.id)) continue;
+      seenRoots.add(v.id);
+      cards.push({
+        key: `tree-${v.id}`,
+        color: dsColor("tree"),
+        title: `Tree · ${name}`,
+        focus: changed.has(name),
+        body: <TreeView heap={heap} rootId={v.id} pointers={pointerByNode} />,
+      });
+    }
   }
 
   // --- Arrays & DP tables (dedupe by id) ---
@@ -84,6 +104,7 @@ export function Stage({ frames, cursor }: { frames: Frame[]; cursor: number }) {
       key: `arr-${v.id}`,
       color: dsColor(v.ds),
       title: `${isDp ? "DP table" : "Array"} ${name}`,
+      focus: changed.has(name),
       body: isDp ? (
         <DPTableView heap={heap} id={v.id} />
       ) : (
@@ -96,28 +117,40 @@ export function Stage({ frames, cursor }: { frames: Frame[]; cursor: number }) {
   for (const [name, v] of byDs("hashmap")) {
     if (seen.has(v.id)) continue;
     seen.add(v.id);
-    cards.push({ key: `map-${v.id}`, color: dsColor("hashmap"), title: `Map ${name}`, body: <HashMapView heap={heap} id={v.id} /> });
+    cards.push({ key: `map-${v.id}`, color: dsColor("hashmap"), title: `Map ${name}`, focus: changed.has(name), body: <HashMapView heap={heap} id={v.id} /> });
   }
   for (const [name, v] of byDs("set")) {
     if (seen.has(v.id)) continue;
     seen.add(v.id);
-    cards.push({ key: `set-${v.id}`, color: dsColor("set"), title: `Set ${name}`, body: <ArrayView heap={heap} id={v.id} /> });
+    cards.push({ key: `set-${v.id}`, color: dsColor("set"), title: `Set ${name}`, focus: changed.has(name), body: <ArrayView heap={heap} id={v.id} /> });
   }
   for (const [name, v] of byDs("object")) {
     if (seen.has(v.id)) continue;
     seen.add(v.id);
-    cards.push({ key: `obj-${v.id}`, color: dsColor("object"), title: name, body: <ObjectView heap={heap} id={v.id} /> });
+    cards.push({ key: `obj-${v.id}`, color: dsColor("object"), title: name, focus: changed.has(name), body: <ObjectView heap={heap} id={v.id} /> });
   }
 
   if (!cards.length) return <Empty>No visual structures in scope at this step.</Empty>;
 
+  // Keep focused (just-changed) structures first for while/for/if step clarity.
+  cards.sort((a, b) => Number(b.focus) - Number(a.focus));
+
   return (
     <div className="flex flex-col gap-4 overflow-auto h-full p-1">
       {cards.map((c) => (
-        <section key={c.key} className="panel p-4">
+        <section
+          key={c.key}
+          className="panel p-4"
+          style={c.focus ? { boxShadow: `inset 0 0 0 1px ${c.color}66` } : undefined}
+        >
           <div className="flex items-center gap-2 mb-1">
             <span className="w-2 h-2 rounded-full" style={{ background: c.color }} />
             <h3 className="text-xs uppercase tracking-wider text-[var(--color-muted)]">{c.title}</h3>
+            {c.focus && (
+              <span className="text-[10px] uppercase tracking-wider" style={{ color: c.color }}>
+                active
+              </span>
+            )}
           </div>
           <div className="overflow-x-auto">{c.body}</div>
         </section>

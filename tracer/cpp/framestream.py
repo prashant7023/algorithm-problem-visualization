@@ -17,9 +17,17 @@ class FrameStream:
         self.out.write(json.dumps(obj, default=str) + "\n")
         self.out.flush()
 
-    def push(self, scope, heap, line, func, event, depth, return_value=None, exception=None):
+    def push(self, scope, heap, line, func, event, depth, return_value=None, exception=None, force_changed=None):
         heap_delta = {sid: o for sid, o in heap.items() if self._prev_heap.get(sid) != o}
         changed = [n for n, v in scope.items() if self._prev_scope.get(n) != v]
+        # Always mark explicit assignment targets on this line (e.g. carry = sum/10
+        # when both sides yield 0) so the UI stays in sync with the highlighted line.
+        if force_changed:
+            seen = set(changed)
+            for n in force_changed:
+                if n in scope and n not in seen:
+                    changed.append(n)
+                    seen.add(n)
         self._write({
             "kind": "frame", "step": self.step, "lang": self.lang, "event": event,
             "func": func, "line": line, "depth": depth, "scope": scope,

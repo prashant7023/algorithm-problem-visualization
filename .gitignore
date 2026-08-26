@@ -1,0 +1,40 @@
+# --- env / secrets ---
+.env
+.env.*
+!.env.example
+!.env*.example
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# --- frontend ---
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/*.local
+
+# --- backend / go ---
+backend/bin/
+backend/*.exe
+*.exe
+*.test
+*.out
+vendor/
+
+# --- tracers / python ---
+**/__pycache__/
+**/*.py[cod]
+**/.venv/
+**/venv/
+*.egg-info/
+
+# --- docker / temp ---
+**/prog
+**/prog.exe
+**/algotrace_cpp_*/
+*.log

@@ -22,9 +22,9 @@ class GdbError(Exception):
 
 
 class GdbMI:
-    def __init__(self, exe: str):
+    def __init__(self, exe: str, gdb: str = "gdb"):
         self.p = subprocess.Popen(
-            ["gdb", "--interpreter=mi2", "--nx", "-q", exe],
+            [gdb, "--interpreter=mi2", "--nx", "-q", exe],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,

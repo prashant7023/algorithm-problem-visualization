@@ -141,7 +141,7 @@ go run ./cmd/api
 # → listening on 127.0.0.1:8080
 ```
 
-The backend reads `ALGOTRACE_TRACER_DIR` (defaults to `../../tracer` relative to the binary).
+The backend reads `ALGOTRACE_TRACER_DIR` (defaults to `../tracer` when run from `algotrace/backend`).
 
 ### Run the frontend
 

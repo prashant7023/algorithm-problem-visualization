@@ -1,0 +1,18 @@
+# Optional Render Blueprint — or create the service in the dashboard instead.
+# https://render.com/docs/blueprint-spec
+#
+# Replace prashant7023 before using `render.yaml` sync.
+
+services:
+  - type: web
+    name: algotrace-api
+    runtime: image
+    image:
+      url: docker.io/prashant7023/algotrace-backend:latest
+    plan: free
+    healthCheckPath: /healthz
+    envVars:
+      - key: ALGOTRACE_TRACER_DIR
+        value: /app/tracer
+      - key: ALGOTRACE_CORS_ORIGIN
+        sync: false # set to https://your-app.vercel.app in dashboard

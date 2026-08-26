@@ -7,7 +7,8 @@ export async function streamTrace(
   onEnvelope: (env: Envelope) => void,
   signal?: AbortSignal,
 ): Promise<void> {
-  const res = await fetch("/api/trace", {
+  const base = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ?? "";
+  const res = await fetch(`${base}/api/trace`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(req),

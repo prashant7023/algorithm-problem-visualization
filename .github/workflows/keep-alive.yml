@@ -1,0 +1,32 @@
+# Pings the Render backend so free-tier instances don't spin down from idle.
+# Set repo secret HEALTH_URL to e.g. https://your-app.onrender.com/healthz
+name: Keep Render awake
+
+on:
+  schedule:
+    - cron: "*/10 * * * *" # every 10 minutes (UTC)
+  workflow_dispatch: # allow manual run from Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake Render
+        env:
+          URL: ${{ secrets.HEALTH_URL }}
+        run: |
+          if [ -z "$URL" ]; then
+            echo "Missing secret HEALTH_URL (e.g. https://algotrace.onrender.com/healthz)"
+            exit 1
+          fi
+          # Retry a few times — cold start can take 30–60s
+          for i in 1 2 3 4 5; do
+            code=$(curl -sS -o /tmp/body -w "%{http_code}" --max-time 60 "$URL" || true)
+            echo "Attempt $i → HTTP $code"
+            if [ "$code" = "200" ]; then
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "Health check failed"
+          exit 1
