@@ -1,4 +1,5 @@
 import { useTrace } from "../../store/traceStore";
+import { MenuSelect } from "../../components/MenuSelect";
 
 const PRESETS: { label: string; entry: string; lang: string; code: string; args: string }[] = [
   {
@@ -45,6 +46,13 @@ const PRESETS: { label: string; entry: string; lang: string; code: string; args:
   },
 ];
 
+const LANGS = [
+  { value: "python", label: "Python" },
+  { value: "cpp", label: "C++" },
+  { value: "java", label: "Java", disabled: true, hint: "Coming soon" },
+  { value: "ts", label: "TypeScript", disabled: true, hint: "Coming soon" },
+];
+
 export function InputBuilder() {
   const { entry, setEntry, lang, setLang, argsText, setArgsText, setCode } = useTrace();
 
@@ -67,8 +75,8 @@ export function InputBuilder() {
         ))}
       </div>
 
-      <div className="flex gap-2">
-        <label className="flex-1 flex flex-col gap-1">
+      <div className="flex gap-2 items-end">
+        <label className="flex-1 flex flex-col gap-1 min-w-0">
           <span className="text-[11px] uppercase tracking-wider text-[var(--color-muted)]">Entry function</span>
           <input
             value={entry}
@@ -76,23 +84,15 @@ export function InputBuilder() {
             className="bg-[var(--color-ink-850)] hairline rounded-lg px-3 py-2 text-sm font-mono text-white outline-none focus:border-[var(--color-ll)]"
           />
         </label>
-        <label className="flex flex-col gap-1 w-32">
-          <span className="text-[11px] uppercase tracking-wider text-[var(--color-muted)]">Language</span>
-          <select
-            value={lang}
-            onChange={(e) => setLang(e.target.value)}
-            className="bg-[var(--color-ink-850)] hairline rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[var(--color-ll)]"
-          >
-            <option value="python">Python</option>
-            <option value="cpp">C++</option>
-            <option value="java" disabled>
-              Java (soon)
-            </option>
-            <option value="ts" disabled>
-              TypeScript (soon)
-            </option>
-          </select>
-        </label>
+        <MenuSelect
+          className="w-36 shrink-0"
+          label="Language"
+          title="Language"
+          value={lang}
+          options={LANGS}
+          onChange={setLang}
+          placement="down"
+        />
       </div>
 
       <label className="flex flex-col gap-1">

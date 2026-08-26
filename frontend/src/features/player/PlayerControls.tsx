@@ -1,12 +1,21 @@
 import { useEffect } from "react";
+import { MenuSelect } from "../../components/MenuSelect";
 import { useTrace } from "../../store/traceStore";
+
+/** Label → frames-per-second used by the playback interval. */
+const SPEEDS = [
+  { value: "1", label: "0.25×" },
+  { value: "2", label: "0.5×" },
+  { value: "4", label: "1×" },
+  { value: "8", label: "2×" },
+  { value: "16", label: "4×" },
+];
 
 export function PlayerControls() {
   const { frames, cursor, playing, speed, setCursor, step, togglePlay, pause, setSpeed } = useTrace();
   const total = frames.length;
   const atEnd = cursor >= total - 1;
 
-  // Playback loop.
   useEffect(() => {
     if (!playing) return;
     if (atEnd) {
@@ -47,21 +56,19 @@ export function PlayerControls() {
         className="flex-1 accent-[var(--color-ll)]"
       />
 
-      <span className="text-xs font-mono text-[var(--color-muted)] w-20 text-right">
+      <span className="text-xs font-mono text-[var(--color-muted)] w-20 text-right tabular-nums">
         {disabled ? "—" : `${cursor + 1} / ${total}`}
       </span>
 
-      <select
-        value={speed}
-        onChange={(e) => setSpeed(Number(e.target.value))}
-        className="bg-[var(--color-ink-850)] hairline rounded-md px-2 py-1 text-xs text-white outline-none"
-        title="Speed"
-      >
-        <option value={2}>0.5×</option>
-        <option value={4}>1×</option>
-        <option value={8}>2×</option>
-        <option value={16}>4×</option>
-      </select>
+      <MenuSelect
+        className="w-[4.75rem] shrink-0"
+        title="Playback speed"
+        value={String(speed)}
+        options={SPEEDS}
+        onChange={(v) => setSpeed(Number(v))}
+        placement="up"
+        buttonClassName="!px-2.5 !py-1.5 !text-xs min-w-0"
+      />
     </div>
   );
 }
